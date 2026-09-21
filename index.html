@@ -164,6 +164,14 @@
 
   pre { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; overflow-x: auto; font: 0.85rem/1.5 var(--mono); margin: 0; }
 
+  .hops { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
+  .hop { display: grid; grid-template-rows: auto auto 1fr; gap: 8px; min-width: 0; }
+  .hop .where { font: 600 0.75rem/1.2 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+  .hop .how { font-size: 0.88rem; color: var(--muted); }
+  .hop pre { font-size: 0.78rem; }
+  @media (max-width: 760px) { .hops { grid-template-columns: 1fr; } }
+  .endpoint { font-family: var(--mono); font-size: 0.85rem; white-space: nowrap; }
+  .endpoint .verb { display: inline-block; min-width: 3.4em; font-weight: 600; color: var(--accent); }
   footer { margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 0.85rem; color: var(--muted); display: grid; gap: 6px; }
 
   @media (max-width: 480px) {
@@ -198,6 +206,7 @@
   <a href="#mounting">Mounting</a>
   <a href="#gateway">The gateway</a>
   <a href="#setup">Firmware &amp; setup</a>
+  <a href="#bayou">Data in Bayou</a>
 </nav>
 
 <!-- ============================================================ -->
@@ -382,7 +391,7 @@
       <tbody>
         <tr>
           <td><span class="part">Bayou</span><span class="note">open-source data store</span></td>
-          <td>Stores and plots the readings. Create a feed with a <code>distance_meters</code> field and give its keys to the gateway.</td>
+          <td>Stores the readings and serves them as charts, JSON and CSV. Create a feed and give its keys to the gateway. See <a href="#bayou">Data in Bayou</a>.</td>
           <td><a href="https://gitlab.com/p-v-o-s/agroeco/bayou">gitlab.com/p-v-o-s/agroeco/bayou</a></td>
         </tr>
         <tr>
@@ -644,12 +653,135 @@ target Receiver</pre></li>
 <pre>set wifi_ssid your-network
 set wifi_password your-password
 reboot</pre></li>
-    <li><b>Point it at your Bayou feed.</b> Create a feed that includes a <code>distance_meters</code> field, then:
-<pre>set bayou_public_key ...
-set bayou_private_key ...</pre></li>
+    <li><b>Point it at your own Bayou feed.</b> Create a feed at <a href="https://bayou.pvos.org/">bayou.pvos.org</a> (see <a href="#bayou">Data in Bayou</a>), then enter its two keys:
+<pre>set bayou_public_key YOUR_PUBLIC_KEY
+set bayou_private_key YOUR_PRIVATE_KEY</pre></li>
     <li><b>Optional:</b> change how often readings are sent with <code>set interval 300</code> (seconds, minimum 10), and give the node a name with <code>set name Dock-North</code>.</li>
   </ol>
   <p class="prose">To check it's working, run <code>send</code> on the Rook to force a reading now, and <code>status</code> on the gateway to see the WiFi and Bayou status and the last reading received.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="bayou">
+  <header>
+    <span class="eyebrow">Data</span>
+    <h2>Data in Bayou</h2>
+  </header>
+  <div class="prose stack">
+    <p><a href="https://gitlab.com/p-v-o-s/agroeco/bayou">Bayou</a> is a small open-source data server (Node/Express + PostgreSQL) from PVOS. It keeps sensor readings in <b>feeds</b> and serves them back as charts, JSON and CSV. The public instance runs at <a href="https://bayou.pvos.org/">bayou.pvos.org</a>, or you can run your own from the <a href="https://gitlab.com/p-v-o-s/agroeco/bayou">GitLab repo</a>. The repo's <a href="https://gitlab.com/p-v-o-s/agroeco/bayou/-/blob/master/docs/API.md"><code>docs/API.md</code></a> is the full API reference.</p>
+    <p>There are no accounts. Each feed has two 12-character keys:</p>
+    <ul>
+      <li><b>Public key</b>: appears in URLs. Anyone who has it can <i>read</i> the feed and see its charts.</li>
+      <li><b>Private key</b>: sent in the body of each post. Anyone who has it can <i>write</i> to the feed, and can also clear it. Keep it private.</li>
+    </ul>
+    <p>To create a feed, open <a href="https://bayou.pvos.org/">bayou.pvos.org</a> and click <b>Create new feed</b>. The page that follows shows both keys, the feed's URL and a QR code. Save them: that page is the only place the private key is shown. You don't need to set up fields: every feed accepts the full set listed below.</p>
+  </div>
+
+  <div class="callout"><b>Use your own feed.</b> The gateway firmware ships with a shared demo feed's keys built in, so it posts somewhere as soon as it's on WiFi. Because those keys are published with the firmware, anyone can write to or clear that feed. Set your own keys before you rely on the data.</div>
+
+  <h3>From sensor to database</h3>
+  <p class="prose">Each reading changes shape twice on its way into Bayou:</p>
+  <figure>
+    <div class="hops">
+      <div class="hop">
+        <span class="where">1 · Rook → Heltec</span>
+        <span class="how">A LoRa direct message: one line of text, end-to-end encrypted by MeshCore.</span>
+<pre>[SENSOR] node_id=1 dist=1.234m
+ batt=3.87V fwd_hops=0 fwd_path=none</pre>
+      </div>
+      <div class="hop">
+        <span class="where">2 · Heltec → Bayou</span>
+        <span class="how">An HTTPS <code>POST</code> of JSON to <span class="mono">https://bayou.pvos.org/data/&lt;public_key&gt;</span></span>
+<pre>{
+  "private_key": "YOUR_PRIVATE_KEY",
+  "node_id": 1,
+  "distance_meters": 1.234,
+  "battery_volts": 3.870,
+  "aux_1": 0,
+  "aux_2": 0,
+  "log": "path=none route=DIRECT",
+  "source": "Sensor"
+}</pre>
+      </div>
+      <div class="hop">
+        <span class="where">3 · Stored in Bayou</span>
+        <span class="how">One row per reading. The server adds the id and timestamp and leaves unsent fields empty (<code>null</code>).</span>
+<pre>{
+  "id": 2490734,
+  "timestamp": "2026-07-20T09:04:31.832Z",
+  "parameters": {
+    "distance_meters": 1.234,
+    "battery_volts": 3.87,
+    "node_id": 1,
+    "aux_1": 0, "aux_2": 0,
+    "log": "path=none route=DIRECT",
+    "temperature_c": null,
+    "…": "every other field, null"
+  }
+}</pre>
+      </div>
+    </div>
+    <figcaption>Example values. The Heltec acknowledges the reading over LoRa first, then posts it. If the post fails, for example because WiFi is down, the Heltec retries every 15 seconds. It only holds the most recent reading, so a newer one replaces an unsent older one: readings aren't queued up while offline.</figcaption>
+  </figure>
+
+  <h3>What the gateway sends</h3>
+  <div class="table-wrap">
+    <table style="min-width:600px">
+      <thead><tr><th>Field</th><th>Meaning</th><th>Where it comes from</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">private_key</td><td>Proves the post is allowed to write to this feed</td><td>Gateway setting <code>bayou_private_key</code></td></tr>
+        <tr><td class="mono">node_id</td><td>Which sensor sent the reading (1–65535). Lets several sensors share one feed, each drawn as its own line</td><td>Sender setting <code>set node_id</code> (default 1)</td></tr>
+        <tr><td class="mono">distance_meters</td><td>Distance from the sensor face down to the water, in metres (mm resolution)</td><td>MB7383 reading</td></tr>
+        <tr><td class="mono">battery_volts</td><td>Sender's battery voltage. Watch it for charging problems</td><td>Rook battery divider</td></tr>
+        <tr><td class="mono">aux_1</td><td>Mesh hops the message took, as measured on arrival</td><td>Gateway</td></tr>
+        <tr><td class="mono">aux_2</td><td>Hops the sender believed its route had (255 = unknown)</td><td>Sender</td></tr>
+        <tr><td class="mono">log</td><td>Route details as <code>key=value</code> text: the repeater path, and <code>DIRECT</code> or <code>FLOOD</code> routing</td><td>Gateway</td></tr>
+        <tr><td class="mono">source</td><td>The sender's name. <b>Not stored</b>: Bayou ignores field names it doesn't recognise</td><td>Sender setting <code>set name</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Posting to Bayou yourself</h3>
+  <p class="prose"><span class="endpoint"><span class="verb">POST</span>/data/&lt;public_key&gt;/</span> accepts JSON (<code>Content-Type: application/json</code>) or an ordinary form post. It must include <code>private_key</code> and can include any of the fields below. Unknown fields are silently dropped, and omitted fields are stored as empty. The server records the time a reading arrives. <b>You can't send your own timestamp</b>, so old data can't be backfilled. A successful post returns <code>200 Measurement recorded</code>. A wrong key returns <code>400 Private key mismatch.</code></p>
+  <div class="table-wrap">
+    <table style="min-width:560px">
+      <thead><tr><th>Group</th><th>Accepted fields</th></tr></thead>
+      <tbody>
+        <tr><td>Distance</td><td class="mono">distance_meters, distance_meters_1, distance_meters_2, distance_meters_3</td></tr>
+        <tr><td>Environment</td><td class="mono">temperature_c, humidity_rh, pressure_mbar, co2_ppm, light_lux</td></tr>
+        <tr><td>Extra temperatures</td><td class="mono">temperature_c_1, temperature_c_2, temperature_c_3</td></tr>
+        <tr><td>Power</td><td class="mono">battery_volts, voltage_1, voltage_2, voltage_3</td></tr>
+        <tr><td>GPS</td><td class="mono">gps_lat, gps_lon, gps_alt</td></tr>
+        <tr><td>General purpose</td><td class="mono">aux_1, aux_2, aux_3</td></tr>
+        <tr><td>Mesh / radio</td><td class="mono">node_id, rssi, next_hop, next_rssi</td></tr>
+        <tr><td>Free text</td><td class="mono">log</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="prose">You can test a new feed from a laptop before any hardware is involved:</p>
+<pre>curl -X POST https://bayou.pvos.org/data/YOUR_PUBLIC_KEY/ \
+  -H 'Content-Type: application/json' \
+  -d '{"private_key":"YOUR_PRIVATE_KEY","node_id":1,"distance_meters":1.72,"battery_volts":3.9}'</pre>
+
+  <h3>Reading data out</h3>
+  <p class="prose">Every read address needs only the public key, so you can share them freely. The JSON addresses allow cross-origin requests (CORS), so any web page can fetch a feed directly. Replace <code>&lt;key&gt;</code> with the feed's public key and <code>&lt;node&gt;</code> with a sender's <code>node_id</code>.</p>
+  <div class="table-wrap">
+    <table style="min-width:640px">
+      <thead><tr><th>Address</th><th>Returns</th></tr></thead>
+      <tbody>
+        <tr><td class="endpoint">/data/&lt;key&gt;/?plot_param=distance_meters</td><td>The feed's web page: a live chart (one line per node, refreshed every 5&nbsp;s), a node table, links and a QR code. <code>plot_param</code> chooses the field to chart and defaults to CO₂, so add it for water level.</td></tr>
+        <tr><td class="endpoint">/data/&lt;key&gt;/json/</td><td>The newest readings as JSON, oldest first. Add <code>?limit=N</code> for the latest N (default 2000).</td></tr>
+        <tr><td class="endpoint">/data/&lt;key&gt;/json/&lt;node&gt;</td><td>Same, for one sensor only.</td></tr>
+        <tr><td class="endpoint">/data/&lt;key&gt;/latest/</td><td>Only the single newest reading, as JSON. Useful for dashboards and “is it still alive?” checks.</td></tr>
+        <tr><td class="endpoint">/data/&lt;key&gt;/latest/&lt;node&gt;</td><td>The newest reading from one sensor.</td></tr>
+        <tr><td class="endpoint">/data/&lt;key&gt;/latest/csv/</td><td>The newest reading as a one-row CSV file.</td></tr>
+        <tr><td class="endpoint">/data/&lt;key&gt;/csv/</td><td>The feed's <i>entire</i> history as a CSV download, all columns.</td></tr>
+        <tr><td class="endpoint">/data/&lt;key&gt;/csv/&lt;node&gt;</td><td>Entire history for one sensor, as CSV.</td></tr>
+        <tr><td class="endpoint">/stations/</td><td>A phone-friendly dashboard of several feeds: a map, each station's chart, and printable QR codes. Configured in the page and shareable as a link.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="prose">Every JSON response has the same shape: <code>{"feed_pubkey", "feed_name", "data": [ {"id", "timestamp", "parameters": {…}} ]}</code>. Each reading's <code>parameters</code> contains all the accepted fields, with <code>null</code> for any that weren't sent. Timestamps are UTC. Bayou has no filtering by date range: fetch the latest N with <code>limit</code>, or download the full CSV.</p>
 </section>
 
 <footer>

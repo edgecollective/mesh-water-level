@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mesh Water Level</title>
+<meta name="description" content="Parts list, sources and wiring for a solar-powered MeshCore ultrasonic water-level sensor: Rook + MaxBotix MB7383 sender, Heltec V3/V4 gateway, Bayou data store.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Public+Sans:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  :root {
+    --ground: #f4f7f7;
+    --surface: #ffffff;
+    --ink: #10262e;
+    --muted: #52666d;
+    --line: #cfdadc;
+    --accent: #0f6e8c;
+    --accent-soft: #dcecf1;
+    --warn: #a84c14;
+    --warn-soft: #fbeee4;
+    --wire-data: #c98f00;
+    --wire-power: #c8352e;
+    --wire-gnd: #10262e;
+    --water: #bcdbe6;
+    --display: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+    --body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0d1a1f; --surface: #132329; --ink: #e3eef0; --muted: #93a8ae;
+      --line: #27404a; --accent: #5cb8d6; --accent-soft: #15313b;
+      --warn: #e89a62; --warn-soft: #2e1f16;
+      --wire-data: #f0c34a; --wire-power: #ef6b62; --wire-gnd: #c9d7da; --water: #1b3f4c;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0d1a1f; --surface: #132329; --ink: #e3eef0; --muted: #93a8ae;
+    --line: #27404a; --accent: #5cb8d6; --accent-soft: #15313b;
+    --warn: #e89a62; --warn-soft: #2e1f16;
+    --wire-data: #f0c34a; --wire-power: #ef6b62; --wire-gnd: #c9d7da; --water: #1b3f4c;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font: 16px/1.6 var(--body);
+    padding: 0 20px;
+  }
+  img { max-width: 100%; }
+  a { color: var(--accent); text-underline-offset: 2px; }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+  code, .mono { font-family: var(--mono); font-size: 0.86em; }
+  code { background: var(--accent-soft); padding: 0.1em 0.35em; border-radius: 3px; }
+
+  .wrap { max-width: 980px; margin: 0 auto; padding-block: 48px 72px; }
+  .prose { max-width: 68ch; }
+
+  h1, h2, h3 { font-family: var(--display); line-height: 1.1; text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(2.4rem, 6vw, 3.6rem); font-weight: 700; letter-spacing: -0.01em; }
+  h2 { font-size: 1.9rem; font-weight: 700; }
+  h3 { font-size: 1.3rem; font-weight: 600; }
+  p { margin: 0; }
+  .stack > * + * { margin-top: 1em; }
+
+  .eyebrow {
+    font: 600 0.78rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--accent);
+  }
+  .lede { font-size: 1.15rem; color: var(--muted); max-width: 62ch; }
+
+  header.top { display: grid; gap: 14px; padding-bottom: 28px; border-bottom: 1px solid var(--line); }
+  .specline { display: flex; flex-wrap: wrap; gap: 8px 22px; font: 0.85rem/1.4 var(--mono); color: var(--muted); }
+  .specline b { color: var(--ink); font-weight: 600; }
+
+  nav.toc { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.92rem; padding-block: 16px; }
+  nav.toc a { text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+
+  section { padding-top: 56px; display: grid; gap: 18px; }
+  section > header { display: grid; gap: 6px; }
+
+  figure { margin: 0; }
+  .diagram {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+    padding: 18px; overflow-x: auto;
+  }
+  .diagram svg { display: block; width: 100%; height: auto; }
+  .diagram.wide svg { min-width: 640px; }
+  figcaption { font-size: 0.88rem; color: var(--muted); margin-top: 10px; max-width: 72ch; }
+  .diagram .sys-mobile { display: none; }
+  @media (max-width: 620px) {
+    .diagram .sys-desktop { display: none; }
+    .diagram .sys-mobile { display: block; max-width: 340px; margin: 0 auto; }
+  }
+
+  /* SVG vocabulary — every color comes from tokens so both themes work */
+  .s-box { fill: var(--surface); stroke: var(--accent); stroke-width: 2; }
+  .s-panel { fill: var(--ground); stroke: var(--line); stroke-width: 1.5; }
+  .s-board { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+  .s-ink { fill: var(--ink); }
+  .s-lbl { font: 600 13px var(--body); fill: var(--ink); }
+  .s-sub { font: 11px var(--body); fill: var(--muted); }
+  .s-pin { font: 11px var(--mono); fill: var(--ink); }
+  .s-pinmuted { font: 11px var(--mono); fill: var(--muted); }
+  .s-radio { font: 600 11px var(--mono); fill: var(--accent); }
+  .s-arrow { stroke: var(--accent); stroke-width: 2; fill: none; }
+  .s-arrowhead { fill: var(--accent); }
+  .s-dot { fill: var(--surface); stroke: var(--ink); stroke-width: 1.5; }
+  .w-data { stroke: var(--wire-data); stroke-width: 3; fill: none; stroke-linecap: round; }
+  .w-power { stroke: var(--wire-power); stroke-width: 3; fill: none; stroke-linecap: round; }
+  .w-gnd { stroke: var(--wire-gnd); stroke-width: 3; fill: none; stroke-linecap: round; }
+  .w-usb { stroke: var(--muted); stroke-width: 4; fill: none; stroke-linecap: round; }
+  .t-data { fill: var(--wire-data); } .t-power { fill: var(--wire-power); } .t-gnd { fill: var(--wire-gnd); }
+  .s-water { fill: var(--water); }
+  .s-dim { stroke: var(--muted); stroke-width: 1; fill: none; stroke-dasharray: 4 3; }
+  .s-warn { font: 600 11px var(--body); fill: var(--warn); }
+
+  /* Parts tables */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 0.93rem; }
+  th, td { text-align: left; vertical-align: top; padding: 11px 14px; border-bottom: 1px solid var(--line); }
+  tr:last-child td { border-bottom: 0; }
+  th { font: 600 0.72rem/1.2 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); background: var(--ground); }
+  td.qty, td.price { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td .part { font-weight: 600; }
+  td .note { color: var(--muted); font-size: 0.88rem; display: block; margin-top: 2px; }
+  .parts-table { min-width: 680px; }
+  .parts-table td:first-child { width: 30%; }
+
+  .group-title { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
+  .group-title .count { font: 0.8rem var(--mono); color: var(--muted); }
+
+  /* Rook sourcing options */
+  .options { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
+  .option { border: 1px solid var(--line); border-radius: 6px; padding: 18px; display: grid; gap: 8px; align-content: start; background: var(--surface); }
+  .option .who { font: 600 0.75rem/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .option.featured { border-color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
+  .option ul { margin: 0; padding-left: 1.1em; font-size: 0.93rem; }
+
+  .callout {
+    border-left: 3px solid var(--warn); background: var(--warn-soft);
+    padding: 12px 16px; border-radius: 0 6px 6px 0; font-size: 0.95rem; max-width: 76ch;
+  }
+  .callout b { color: var(--warn); }
+  .callout.oled { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .callout.oled img { width: 110px; height: auto; flex: none; border-radius: 4px; background: #fff; }
+  .callout.oled > div { flex: 1 1 260px; }
+  .note-plain { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 12px 16px; border-radius: 0 6px 6px 0; font-size: 0.95rem; max-width: 76ch; }
+  .placeholder { background: var(--warn-soft); color: var(--warn); font-family: var(--mono); font-size: 0.85em; padding: 0 4px; border-radius: 3px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 0.85rem; color: var(--muted); }
+  .legend span::before { content: ""; display: inline-block; width: 18px; height: 3px; margin-right: 6px; vertical-align: middle; border-radius: 2px; background: currentColor; }
+  .legend .l-data { color: var(--wire-data); } .legend .l-power { color: var(--wire-power); } .legend .l-gnd { color: var(--wire-gnd); }
+  .legend span > i { font-style: normal; color: var(--muted); }
+
+  ol.steps { margin: 0; padding-left: 1.3em; display: grid; gap: 10px; max-width: 72ch; }
+  ol.steps li::marker { font-family: var(--mono); color: var(--accent); font-weight: 600; }
+
+  pre { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; overflow-x: auto; font: 0.85rem/1.5 var(--mono); margin: 0; }
+
+  footer { margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 0.85rem; color: var(--muted); display: grid; gap: 6px; }
+
+  @media (max-width: 480px) {
+    body { padding: 0 16px; }
+    .wrap { padding-block: 32px 56px; }
+    section { padding-top: 44px; }
+    .diagram { padding: 12px; }
+  }
+</style>
+</head>
+<body>
+<main class="wrap">
+
+<header class="top">
+  <span class="eyebrow">Build recipe · Edge Collective</span>
+  <h1>Mesh Water Level</h1>
+  <p class="lede">A solar-powered ultrasonic sensor that measures the distance down to a water surface, radios it over a MeshCore LoRa link to a WiFi gateway, and logs it to Bayou. This page lists every part, where to buy it, and how it's wired.</p>
+  <div class="specline">
+    <span><b>Sensor</b> MaxBotix MB7383</span>
+    <span><b>Sender</b> Rook v4 (nRF52840 + SX1262)</span>
+    <span><b>Gateway</b> Heltec WiFi LoRa 32 V3 / V4</span>
+    <span><b>Radio</b> 910.525 MHz · SF7 · BW 62.5 kHz</span>
+    <span><b>Default interval</b> 300 s</span>
+  </div>
+</header>
+
+<nav class="toc" aria-label="Contents">
+  <a href="#system">How it fits together</a>
+  <a href="#parts">Parts &amp; sources</a>
+  <a href="#rook">Getting a Rook</a>
+  <a href="#wiring">Wiring the sensor node</a>
+  <a href="#mounting">Mounting</a>
+  <a href="#gateway">The gateway</a>
+  <a href="#setup">Firmware &amp; setup</a>
+</nav>
+
+<!-- ============================================================ -->
+<section id="system">
+  <header>
+    <span class="eyebrow">Overview</span>
+    <h2>How it fits together</h2>
+  </header>
+  <p class="prose">Two devices, one link each. The <b>sender</b> sits in a weatherproof box over the water, reads the ultrasonic sensor on a timer, and transmits a short LoRa message with the distance and its battery voltage. The <b>receiver</b> sits indoors within WiFi range (a LoRa link can span a few hundred metres to a few kilometres depending on terrain and antennas), acknowledges each reading, and posts it to a Bayou feed as <code>distance_meters</code> and <code>battery_volts</code>.</p>
+
+  <figure>
+    <div class="diagram">
+      <!-- Adapted from micro-config/img/sensor-system.svg -->
+      <svg class="sys-desktop" viewBox="0 0 660 280" role="img" aria-label="Sender (Rook) sends LoRa to receiver (Heltec), which posts over WiFi to Bayou">
+        <rect x="20" y="30" width="180" height="220" rx="8" class="s-box"/>
+        <image href="img/rook_ultrasonic_sender_closeup.png" x="35" y="40" width="150" height="150" preserveAspectRatio="xMidYMax meet"/>
+        <text x="110" y="215" class="s-lbl" text-anchor="middle">Sender (Rook)</text>
+        <text x="110" y="235" class="s-sub" text-anchor="middle">ultrasonic + LoRa</text>
+
+        <path class="s-arrow" d="M 210 140 L 265 140"/>
+        <polygon class="s-arrowhead" points="265,134 277,140 265,146"/>
+        <text x="243" y="128" class="s-radio" text-anchor="middle">LoRa</text>
+
+        <rect x="290" y="30" width="180" height="220" rx="8" class="s-box"/>
+        <image href="img/sensor_receiver.png" x="305" y="40" width="150" height="150" preserveAspectRatio="xMidYMax meet"/>
+        <text x="380" y="215" class="s-lbl" text-anchor="middle">Receiver (Heltec V3/V4)</text>
+        <text x="380" y="235" class="s-sub" text-anchor="middle">LoRa + WiFi</text>
+
+        <path class="s-arrow" d="M 480 140 L 535 140"/>
+        <polygon class="s-arrowhead" points="535,134 547,140 535,146"/>
+        <text x="513" y="128" class="s-radio" text-anchor="middle">WiFi</text>
+
+        <rect x="560" y="90" width="90" height="100" rx="8" class="s-box"/>
+        <text x="605" y="135" class="s-lbl" text-anchor="middle">Bayou</text>
+        <text x="605" y="155" class="s-sub" text-anchor="middle">data store</text>
+      </svg>
+      <!-- Adapted from micro-config/img/sensor-system-mobile.svg -->
+      <svg class="sys-mobile" viewBox="0 0 300 620" role="img" aria-label="Sender (Rook) sends LoRa to receiver (Heltec), which posts over WiFi to Bayou">
+        <rect x="40" y="10" width="220" height="200" rx="8" class="s-box"/>
+        <image href="img/rook_ultrasonic_sender_closeup.png" x="50" y="20" width="200" height="140" preserveAspectRatio="xMidYMax meet"/>
+        <text x="150" y="180" class="s-lbl" text-anchor="middle" style="font-size:16px">Sender (Rook)</text>
+        <text x="150" y="200" class="s-sub" text-anchor="middle" style="font-size:13px">ultrasonic + LoRa</text>
+        <path class="s-arrow" d="M 150 220 L 150 246"/>
+        <polygon class="s-arrowhead" points="144,246 156,246 150,258"/>
+        <text x="165" y="240" class="s-radio" style="font-size:12px">LoRa</text>
+        <rect x="40" y="264" width="220" height="200" rx="8" class="s-box"/>
+        <image href="img/sensor_receiver.png" x="50" y="274" width="200" height="140" preserveAspectRatio="xMidYMax meet"/>
+        <text x="150" y="434" class="s-lbl" text-anchor="middle" style="font-size:15px">Receiver (Heltec V3/V4)</text>
+        <text x="150" y="454" class="s-sub" text-anchor="middle" style="font-size:13px">LoRa + WiFi</text>
+        <path class="s-arrow" d="M 150 474 L 150 500"/>
+        <polygon class="s-arrowhead" points="144,500 156,500 150,512"/>
+        <text x="165" y="494" class="s-radio" style="font-size:12px">WiFi</text>
+        <rect x="75" y="518" width="150" height="90" rx="8" class="s-box"/>
+        <text x="150" y="558" class="s-lbl" text-anchor="middle" style="font-size:16px">Bayou</text>
+        <text x="150" y="578" class="s-sub" text-anchor="middle" style="font-size:13px">data store</text>
+      </svg>
+    </div>
+  </figure>
+
+  <figure>
+    <img src="img/ultrasonic_sender.png" alt="Illustration: a solar panel and a grey junction box mounted on a wooden board at the water's edge; the ultrasonic sensor points down out of the bottom of the box." width="722" height="282" style="display:block; border-radius:6px; border:1px solid var(--line)">
+    <figcaption>The sender in the field: a small 5&nbsp;V USB solar panel feeds the Rook's USB port, which charges the lithium battery inside the box. The sensor threads through the bottom of the box and points straight down.</figcaption>
+  </figure>
+</section>
+
+<!-- ============================================================ -->
+<section id="parts">
+  <header>
+    <span class="eyebrow">Bill of materials</span>
+    <h2>Parts &amp; where to get them</h2>
+  </header>
+  <p class="prose">Prices are approximate (USD, 2026) and shown only for budgeting. Where a part is generic, the spec that matters is listed instead of a single product, so you can buy from whichever supplier ships to you.</p>
+
+  <div class="note-plain"><b>Pick the right radio band.</b> This firmware runs at 910.525&nbsp;MHz (the US 902–928&nbsp;MHz band). Order the <b>915&nbsp;MHz / “high band” (863–928&nbsp;MHz)</b> version of the Heltec and of any antennas. A 433 or 470&nbsp;MHz board will not work.</div>
+
+  <div class="group-title"><h3>Sensor node (sender)</h3><span class="count">1 per monitoring site</span></div>
+  <div class="table-wrap">
+    <table class="parts-table">
+      <thead><tr><th>Part</th><th>What it does</th><th>Where to get it</th><th>Qty</th><th>Approx.</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="part">MaxBotix MB7383</span><span class="note">HRXL-MaxSonar-WRLST, IP67, TTL serial</span></td>
+          <td>Ultrasonic rangefinder. Reports distance in millimetres, 0.5–10&nbsp;m, about 6 readings per second.</td>
+          <td><a href="https://maxbotix.com/products/mb7383">maxbotix.com</a><span class="note">Also sold by RobotShop and others</span></td>
+          <td class="qty">1</td><td class="price">$110</td>
+        </tr>
+        <tr>
+          <td><span class="part">Rook v4</span><span class="note">nRF52840 pro-micro + Wio-SX1262 LoRa + OLED</span></td>
+          <td>The sender's microcontroller and radio. Reads the sensor over UART, shows status on its screen, transmits over MeshCore.</td>
+          <td>Assembled, bare PCB, or build it yourself — see <a href="#rook">Getting a Rook</a></td>
+          <td class="qty">1</td><td class="price">see below</td>
+        </tr>
+        <tr>
+          <td><span class="part">LoRa antenna, 915&nbsp;MHz</span><span class="note">e.g. Nearson S463AH-915: 2&nbsp;dBi whip, RP-SMA male</span></td>
+          <td>Connects to the Wio-SX1262 module. Never power the radio without an antenna attached. The Wio's socket is a tiny U.FL (IPEX), so an RP-SMA antenna also needs a <b>U.FL to RP-SMA female bulkhead pigtail</b>, which doubles as a clean pass-through in the enclosure wall.</td>
+          <td><a href="https://www.digikey.com/en/products/detail/nearson-inc/S463AH-915/4571854">DigiKey — Nearson S463AH-915</a><span class="note">Pigtail: search “U.FL to RP-SMA female bulkhead”</span></td>
+          <td class="qty">1 + pigtail</td><td class="price">$10–20</td>
+        </tr>
+        <tr>
+          <td><span class="part">Li-ion / LiPo battery</span><span class="note">3.7&nbsp;V single cell, 3000–10000&nbsp;mAh</span></td>
+          <td>Runs the node overnight and through cloudy days. Must have a protection circuit and a <b>JST-PH 2.0&nbsp;mm 2-pin</b> plug. <b style="color:var(--warn)">Check the plug's polarity before connecting</b>: vendors don't agree on which side is positive (see <a href="#wiring">wiring</a>).</td>
+          <td>Adafruit, SparkFun, or any hobby battery supplier. Search “3.7V LiPo JST-PH 10000mAh”</td>
+          <td class="qty">1</td><td class="price">$10–30</td>
+        </tr>
+        <tr>
+          <td><span class="part">5&nbsp;V USB solar panel</span><span class="note">~5–6&nbsp;W, USB-A output, outdoor-rated</span></td>
+          <td>Charges the battery through the Rook's USB-C port. Any panel with a regulated 5&nbsp;V USB output will do.</td>
+          <td>Generic. Search “5V 6W USB solar panel waterproof”</td>
+          <td class="qty">1</td><td class="price">$15–30</td>
+        </tr>
+        <tr>
+          <td><span class="part">USB-A to USB-C cable</span><span class="note">outdoor length as needed</span></td>
+          <td>Runs from the panel into the box, through a cable gland.</td>
+          <td>Generic</td>
+          <td class="qty">1</td><td class="price">$5</td>
+        </tr>
+        <tr>
+          <td><span class="part">Hook-up wire, 3 conductors</span><span class="note">22–24 AWG, or shielded 3-core cable</span></td>
+          <td>Sensor to Rook: signal, power, ground. Keep it short if you can. For longer runs, use shielded cable.</td>
+          <td>Generic, or MaxBotix's shielded cable (sold under “accessories” on the MB7383 page)</td>
+          <td class="qty">~30&nbsp;cm</td><td class="price">$2</td>
+        </tr>
+        <tr>
+          <td><span class="part">Weatherproof junction box</span><span class="note">IP65+, roughly 100 × 100 × 70&nbsp;mm</span></td>
+          <td>Holds the Rook and battery. Needs room for the sensor's thread through the bottom and a gland for the solar cable.</td>
+          <td>Hardware or electrical supplier</td>
+          <td class="qty">1</td><td class="price">$10–20</td>
+        </tr>
+        <tr>
+          <td><span class="part">¾″ fitting + cable gland</span><span class="note">¾″ PVC/conduit locknut or coupling; PG7 or M12 gland</span></td>
+          <td>The MB7383's housing threads into standard ¾″ electrical PVC fittings. The gland seals the USB cable entry.</td>
+          <td>Hardware store</td>
+          <td class="qty">1 each</td><td class="price">$5</td>
+        </tr>
+        <tr>
+          <td><span class="part">Mounting board / bracket</span></td>
+          <td>Holds the panel and box so the sensor points straight down, clear of the dock or bank.</td>
+          <td>Local lumber, or a steel angle bracket</td>
+          <td class="qty">1</td><td class="price">—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="group-title"><h3>Gateway (receiver)</h3><span class="count">1 per site, or shared by nearby sensors</span></div>
+  <div class="table-wrap">
+    <table class="parts-table">
+      <thead><tr><th>Part</th><th>What it does</th><th>Where to get it</th><th>Qty</th><th>Approx.</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="part">Heltec WiFi LoRa 32 V3 <i>or</i> V4</span><span class="note">ESP32-S3 + SX1262, 863–928&nbsp;MHz</span></td>
+          <td>Receives the LoRa messages, acknowledges them, and posts each reading to Bayou over WiFi. Its screen shows WiFi and Bayou status. Either version works: the V4 has more transmit power, the V3 is cheaper and widely stocked.</td>
+          <td><a href="https://heltec.org/project/wifi-lora-32-v3/">heltec.org — V3</a><br><a href="https://heltec.org/project/wifi-lora-32-v4/">heltec.org — V4</a><span class="note">Also Rokland, Amazon, and other resellers</span></td>
+          <td class="qty">1</td><td class="price">$20–30</td>
+        </tr>
+        <tr>
+          <td><span class="part">LoRa antenna</span></td>
+          <td>Usually included with the Heltec. A better antenna placed high, by a window, increases range. The same Nearson whip works here with a U.FL to RP-SMA pigtail.</td>
+          <td>Included, or <a href="https://www.digikey.com/en/products/detail/nearson-inc/S463AH-915/4571854">Nearson S463AH-915</a></td>
+          <td class="qty">1</td><td class="price">incl.</td>
+        </tr>
+        <tr>
+          <td><span class="part">USB-C power supply + cable</span></td>
+          <td>Powers the gateway continuously. Any phone charger works.</td>
+          <td>Generic</td>
+          <td class="qty">1</td><td class="price">$10</td>
+        </tr>
+        <tr>
+          <td><span class="part">Case (optional)</span></td>
+          <td>Heltec sells a housing kit for the V4. 3D-printed cases exist for both boards.</td>
+          <td><a href="https://heltec.org/project/wifi-lora-32-v4-expansion-housing/">heltec.org — expansion kit</a></td>
+          <td class="qty">1</td><td class="price">$5–15</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="group-title"><h3>Online services</h3></div>
+  <div class="table-wrap">
+    <table class="parts-table">
+      <thead><tr><th>Service</th><th>What it does</th><th>Link</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="part">Bayou</span><span class="note">open-source data store</span></td>
+          <td>Stores and plots the readings. Create a feed with a <code>distance_meters</code> field and give its keys to the gateway.</td>
+          <td><a href="https://gitlab.com/p-v-o-s/agroeco/bayou">gitlab.com/p-v-o-s/agroeco/bayou</a></td>
+        </tr>
+        <tr>
+          <td><span class="part">Setup &amp; flashing page</span></td>
+          <td>Flashes both devices from Chrome or Edge, and gives you a serial console for pairing and WiFi setup.</td>
+          <td><a href="https://edgecollective.io/micro-config/">edgecollective.io/micro-config</a></td>
+        </tr>
+        <tr>
+          <td><span class="part">Firmware source</span><span class="note">example <code>v3-ultrasonic</code></span></td>
+          <td>MeshCore-based firmware for both the sender and the receiver.</td>
+          <td><a href="https://github.com/edgecollective/MeshCore-simple-sensor">github.com/edgecollective/MeshCore-simple-sensor</a></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="rook">
+  <header>
+    <span class="eyebrow">The sender board</span>
+    <h2>Getting a Rook</h2>
+  </header>
+  <p class="prose">The Rook is an open-hardware carrier board designed by Edge Collective / PVOS. It pairs an nRF52840 “pro-micro” module with a Seeed Wio-SX1262 LoRa radio, a small OLED screen, a user button, a power switch, and a JST battery connector. There are three ways to get one.</p>
+
+  <div class="options">
+    <div class="option featured">
+      <span class="who">Easiest</span>
+      <h3>Assembled &amp; flashed</h3>
+      <p>A finished Rook v4, tested and loaded with the sender firmware, ready to wire to the sensor.</p>
+      <p>Order from Edge Collective: <span class="placeholder">contact / price TBD</span></p>
+    </div>
+    <div class="option">
+      <span class="who">Some soldering</span>
+      <h3>Bare PCB + parts kit</h3>
+      <p>Buy the bare PCB and source the modules yourself. All the modules are through-hole or socketed:</p>
+      <ul>
+        <li>nRF52840 pro-micro: <a href="https://nicekeyboards.com/nice-nano/">nice!nano v2</a>, or a “ProMicro / SuperMini nRF52840” clone</li>
+        <li><a href="https://www.seeedstudio.com/Wio-SX1262-for-XIAO-p-6379.html">Seeed Wio-SX1262 for XIAO</a></li>
+        <li><a href="https://www.amazon.com/dp/B0CN373JF4">0.96″ SSD1306 I²C OLED</a>, 128×64, 4-pin (pin order must be <span class="mono">VCC GND SCL SDA</span>)</li>
+        <li>Right-angle tactile switches, slide switch, JST-PH 2-pin socket, headers</li>
+      </ul>
+      <p>PCB: <span class="placeholder">contact / price TBD</span></p>
+    </div>
+    <div class="option">
+      <span class="who">Full DIY</span>
+      <h3>From the design files</h3>
+      <p>KiCad schematic, PCB layout and Gerbers are open source. Order boards from any PCB fab and build from the schematic.</p>
+      <p><a href="https://github.com/p-v-o-s/rook">github.com/p-v-o-s/rook</a> <span class="note" style="color:var(--muted)">(v4 hardware lives in <code>hardware/v0.4</code>)</span></p>
+    </div>
+  </div>
+
+  <div class="callout oled">
+    <img src="img/oled_ssd1306.png" alt="0.96 inch blue SSD1306 OLED module with four header pins labelled VCC, GND, SCL, SDA along the top edge" width="198" height="183">
+    <div>
+      <p><b>Check the OLED's pin order before soldering.</b> The Rook's OLED header is wired <span class="mono">VCC · GND · SCL · SDA</span>, left to right. The labels printed above the four pins on your display must read in that same order, as they do on <a href="https://www.amazon.com/dp/B0CN373JF4">this module</a>. Many look-alike OLEDs put <span class="mono">GND</span> first, and plugging one of those in reverses the power and can destroy the display.</p>
+    </div>
+  </div>
+
+  <div class="callout"><b>Pro-micro clones</b> vary in sleep current and in their charge circuit. A nice!nano v2 is the known-good reference. Test a clone before you rely on it in the field.</div>
+</section>
+
+<!-- ============================================================ -->
+<section id="wiring">
+  <header>
+    <span class="eyebrow">Sender</span>
+    <h2>Wiring the sensor node</h2>
+  </header>
+  <p class="prose">Only three wires go between the sensor and the Rook. The MB7383 runs freely, sending a frame like <code>R0742</code> (742&nbsp;mm) about six times a second at 9600&nbsp;baud. The Rook listens on its <code>RX1</code> pin and never talks back. Power comes in through the pro-micro's USB-C port from the solar panel. The battery plugs into the Rook's JST socket.</p>
+
+  <figure>
+    <div class="diagram wide">
+      <svg viewBox="0 0 760 450" role="img" aria-label="Wiring: MB7383 pin 5 to Rook RX1, pin 6 to 3V3, pin 7 to GND; solar panel USB into pro-micro USB-C; battery into Rook JST-PH">
+        <!-- MB7383 -->
+        <rect x="20" y="40" width="210" height="270" rx="8" class="s-panel"/>
+        <text x="36" y="66" class="s-lbl">MaxBotix MB7383</text>
+        <text x="36" y="84" class="s-sub">7-pin pads on the back of the sensor</text>
+        <g>
+          <circle cx="200" cy="112" r="6" class="s-dot"/><text x="36" y="116" class="s-pinmuted">1  temp sensor</text><text x="190" y="116" class="s-pinmuted" text-anchor="end">NC</text>
+          <circle cx="200" cy="140" r="6" class="s-dot"/><text x="36" y="144" class="s-pinmuted">2  pulse width</text><text x="190" y="144" class="s-pinmuted" text-anchor="end">NC</text>
+          <circle cx="200" cy="168" r="6" class="s-dot"/><text x="36" y="172" class="s-pinmuted">3  analog</text><text x="190" y="172" class="s-pinmuted" text-anchor="end">NC</text>
+          <circle cx="200" cy="196" r="6" class="s-dot"/><text x="36" y="200" class="s-pinmuted">4  RX / start</text><text x="190" y="200" class="s-pinmuted" text-anchor="end">NC</text>
+          <circle cx="200" cy="224" r="6" class="s-dot"/><text x="36" y="228" class="s-pin">5  serial out</text>
+          <circle cx="200" cy="252" r="6" class="s-dot"/><text x="36" y="256" class="s-pin">6  V+</text>
+          <circle cx="200" cy="280" r="6" class="s-dot"/><text x="36" y="284" class="s-pin">7  GND</text>
+        </g>
+
+        <!-- wires -->
+        <path class="w-data"  d="M 206 224 C 300 224, 330 120, 430 120"/>
+        <path class="w-power" d="M 206 252 C 310 252, 330 170, 430 170"/>
+        <path class="w-gnd"   d="M 206 280 C 320 280, 340 220, 430 220"/>
+
+        <!-- Rook -->
+        <rect x="430" y="40" width="310" height="270" rx="8" class="s-board"/>
+        <text x="450" y="66" class="s-lbl">Rook v4</text>
+        <text x="450" y="84" class="s-sub">nRF52840 pro-micro + Wio-SX1262 + OLED</text>
+        <circle cx="430" cy="120" r="6" class="s-dot"/>
+        <text x="446" y="116" class="s-pin" style="font-weight:600">RX1</text>
+        <text x="446" y="131" class="s-pinmuted">P0.08 · D0 · Serial1 RX · pin 2</text>
+        <circle cx="430" cy="170" r="6" class="s-dot"/>
+        <text x="446" y="166" class="s-pin" style="font-weight:600">3V3</text>
+        <text x="446" y="181" class="s-pinmuted">3.3 V out · pin 21</text>
+        <circle cx="430" cy="220" r="6" class="s-dot"/>
+        <text x="446" y="216" class="s-pin" style="font-weight:600">GND</text>
+        <text x="446" y="231" class="s-pinmuted">any GND · pins 3, 4, 23, 26</text>
+
+        <!-- ports on Rook -->
+        <rect x="640" y="250" width="70" height="28" rx="4" class="s-panel"/>
+        <text x="675" y="268" class="s-pin" text-anchor="middle">USB-C</text>
+        <rect x="470" y="250" width="80" height="28" rx="4" class="s-panel"/>
+        <text x="510" y="268" class="s-pin" text-anchor="middle">JST-PH</text>
+
+        <!-- solar -->
+        <path class="w-usb" d="M 675 278 L 675 370"/>
+        <rect x="600" y="370" width="150" height="56" rx="6" class="s-panel"/>
+        <text x="675" y="394" class="s-lbl" text-anchor="middle">Solar panel</text>
+        <text x="675" y="412" class="s-sub" text-anchor="middle">5 V USB output</text>
+
+        <!-- battery -->
+        <path class="w-power" d="M 500 278 L 500 370"/>
+        <path class="w-gnd" d="M 520 278 L 520 370"/>
+        <rect x="430" y="370" width="150" height="56" rx="6" class="s-panel"/>
+        <text x="505" y="394" class="s-lbl" text-anchor="middle">Li-ion battery</text>
+        <text x="505" y="412" class="s-sub" text-anchor="middle">3.7 V · 3000–10000 mAh</text>
+
+        <text x="20" y="344" class="s-warn">Leave pins 1–4 unconnected.</text>
+        <text x="20" y="362" class="s-sub">Pin 4 floating = continuous ranging mode.</text>
+      </svg>
+    </div>
+    <div class="legend" style="margin-top:10px">
+      <span class="l-data"><i>Serial data (sensor → Rook)</i></span>
+      <span class="l-power"><i>Positive supply</i></span>
+      <span class="l-gnd"><i>Ground</i></span>
+    </div>
+    <figcaption>Schematic view, not to scale. “Pin N” on the Rook side is the pin number on the pro-micro footprint in the Rook schematic. On the board itself, use the silkscreen labels <span class="mono">RX1</span>, <span class="mono">3V3</span> and <span class="mono">GND</span>.</figcaption>
+  </figure>
+
+  <div class="table-wrap">
+    <table style="min-width:560px">
+      <thead><tr><th>MB7383 pin</th><th>Signal</th><th>Rook connection</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">5</td><td>TTL serial out</td><td class="mono">RX1 (P0.08)</td><td>9600 baud, 8N1, frames <code>Rdddd\r</code> in mm</td></tr>
+        <tr><td class="mono">6</td><td>V+</td><td class="mono">3V3</td><td>Sensor accepts 2.7–5.5&nbsp;V and draws about 3&nbsp;mA</td></tr>
+        <tr><td class="mono">7</td><td>GND</td><td class="mono">GND</td><td>Any ground pad</td></tr>
+        <tr><td class="mono">4</td><td>Ranging start</td><td>—</td><td>Leave floating so the sensor ranges continuously</td></tr>
+        <tr><td class="mono">1, 2, 3</td><td>Temp / PWM / analog</td><td>—</td><td>Not used</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout"><b>Power the sensor from 3V3, not BAT or USB.</b> The MB7383's serial output swings all the way to its supply voltage. Powered from 3.3&nbsp;V, it's safe for the nRF52840's input pin. Powered from the battery (up to 4.2&nbsp;V) or USB (5&nbsp;V), it can exceed the chip's 3.6&nbsp;V input limit. If you want the extra range margin of a 5&nbsp;V supply, add a resistor divider on the data line.</div>
+
+  <div class="callout"><b>Check the battery's JST polarity before you plug it in.</b> JST-PH plugs are not standardised: some battery vendors wire red (+) to the opposite pin from what the Rook expects. Before connecting, compare the plug with the <b>+</b> and <b>−</b> markings beside the Rook's battery socket, or confirm with a multimeter which pin is positive. If it's reversed, swap the two wires in the plug by gently lifting each plastic latch and pulling the crimped pins out. Never just force it in: a reversed battery can destroy the pro-micro's charger instantly.</div>
+
+  <p class="prose"><b>About charging:</b> the solar panel's 5&nbsp;V goes into the pro-micro's USB-C port, and the pro-micro's built-in charger tops up the battery. That charger is small (about 100&nbsp;mA on a nice!nano), so a bigger panel won't charge any faster. A larger battery gives you more cloudy days in reserve, not faster charging. A 10000&nbsp;mAh cell is a sensible choice for winter or for shaded sites.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="mounting">
+  <header>
+    <span class="eyebrow">Installation</span>
+    <h2>Mounting over the water</h2>
+  </header>
+  <p class="prose">The sensor measures the distance <i>down to</i> the water, so level = (height of sensor above your datum) − <code>distance_meters</code>. Record the mount height once at install time. Mount the box level, so the sensor points straight down over open water.</p>
+
+  <figure>
+    <div class="diagram wide">
+      <svg viewBox="0 0 760 340" role="img" aria-label="Mounting cross-section: box with sensor pointing down, at least 0.5 m above the highest water, clear of pilings">
+        <!-- structure -->
+        <rect x="60" y="40" width="20" height="290" class="s-panel"/>
+        <text x="70" y="30" class="s-sub" text-anchor="middle">piling / post</text>
+        <rect x="80" y="70" width="330" height="14" class="s-panel"/>
+        <!-- solar -->
+        <rect x="100" y="52" width="110" height="12" rx="2" class="s-ink"/>
+        <text x="155" y="46" class="s-sub" text-anchor="middle">solar panel</text>
+        <!-- box -->
+        <rect x="300" y="84" width="90" height="60" rx="4" class="s-box"/>
+        <text x="345" y="112" class="s-pin" text-anchor="middle">Rook +</text>
+        <text x="345" y="126" class="s-pin" text-anchor="middle">battery</text>
+        <path class="w-usb" d="M 210 58 C 250 58, 270 100, 300 104"/>
+        <!-- sensor -->
+        <path d="M 330 144 L 360 144 L 366 184 L 324 184 Z" class="s-board"/>
+        <text x="378" y="170" class="s-sub">MB7383, ¾″ thread</text>
+        <!-- beam -->
+        <path d="M 345 186 L 318 262 M 345 186 L 372 262" class="s-dim"/>
+        <!-- water -->
+        <rect x="80" y="262" width="660" height="68" class="s-water"/>
+        <path d="M 80 262 L 740 262" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="730" y="256" class="s-sub" text-anchor="end">highest expected water</text>
+        <!-- dimension -->
+        <path d="M 470 184 L 470 262" stroke="var(--ink)" stroke-width="1.2"/>
+        <path d="M 464 184 L 476 184 M 464 262 L 476 262" stroke="var(--ink)" stroke-width="1.2"/>
+        <text x="484" y="220" class="s-lbl">≥ 0.5 m</text>
+        <text x="484" y="238" class="s-sub">sensor reads nothing closer than 50 cm</text>
+        <!-- clearance -->
+        <path d="M 80 300 L 300 300" class="s-dim"/>
+        <text x="190" y="294" class="s-sub" text-anchor="middle">≥ 1 m clear of pilings, ropes, hulls</text>
+      </svg>
+    </div>
+    <figcaption>Cross-section, not to scale. The sensor reports the <i>strongest</i> echo, so anything nearer than the water inside its beam (a piling, a rope, a boat) will be measured instead.</figcaption>
+  </figure>
+
+  <ol class="steps">
+    <li>Drill the bottom of the box for the sensor. Thread the MB7383 through a ¾″ PVC fitting or locknut so its face points down, and seal the joint.</li>
+    <li>Fit a cable gland in the side or bottom of the box for the solar panel's USB cable. Keep all openings facing down so rain can't run in.</li>
+    <li>Mount the box so the sensor face is at least 0.5&nbsp;m above the <i>highest</i> water you expect. The MB7383 reads anything closer as 50&nbsp;cm. Its maximum range is 10&nbsp;m.</li>
+    <li>Face the panel toward the equator (south in the northern hemisphere), tilted up and unshaded for as much of the day as you can manage.</li>
+    <li>Test in air first: aim the sensor at the floor from a known height and confirm the OLED reads it to within about 1&nbsp;cm.</li>
+  </ol>
+</section>
+
+<!-- ============================================================ -->
+<section id="gateway">
+  <header>
+    <span class="eyebrow">Receiver</span>
+    <h2>The gateway</h2>
+  </header>
+  <p class="prose">The Heltec needs no wiring: attach its LoRa antenna, plug it into USB power, and place it indoors where it gets WiFi, as close to the sensor as you can, ideally high up by a window facing the sensor. Once configured, it reconnects to WiFi by itself after a power cut.</p>
+  <figure>
+    <div class="diagram wide">
+      <svg viewBox="0 0 760 170" role="img" aria-label="Gateway: antenna and USB power into Heltec; WiFi to router, then internet to Bayou">
+        <rect x="20" y="50" width="130" height="60" rx="6" class="s-panel"/>
+        <text x="85" y="76" class="s-lbl" text-anchor="middle">USB-C charger</text>
+        <text x="85" y="94" class="s-sub" text-anchor="middle">5 V wall power</text>
+        <path class="w-usb" d="M 150 80 L 230 80"/>
+        <rect x="230" y="40" width="190" height="80" rx="8" class="s-box"/>
+        <text x="325" y="74" class="s-lbl" text-anchor="middle">Heltec V3 / V4</text>
+        <text x="325" y="94" class="s-sub" text-anchor="middle">LoRa receive → WiFi post</text>
+        <path d="M 400 40 L 400 12" stroke="var(--ink)" stroke-width="3" stroke-linecap="round"/>
+        <text x="410" y="22" class="s-sub">915 MHz antenna</text>
+        <path class="s-arrow" d="M 430 80 L 510 80"/><polygon class="s-arrowhead" points="510,74 522,80 510,86"/>
+        <text x="470" y="70" class="s-radio" text-anchor="middle">WiFi</text>
+        <rect x="530" y="55" width="90" height="50" rx="6" class="s-panel"/>
+        <text x="575" y="85" class="s-lbl" text-anchor="middle">Router</text>
+        <path class="s-arrow" d="M 620 80 L 640 80"/><polygon class="s-arrowhead" points="640,74 652,80 640,86"/>
+        <rect x="660" y="55" width="80" height="50" rx="6" class="s-box"/>
+        <text x="700" y="85" class="s-lbl" text-anchor="middle">Bayou</text>
+        <text x="325" y="150" class="s-sub" text-anchor="middle">Readings arrive by LoRa from the Rook; each is acknowledged, then posted.</text>
+      </svg>
+    </div>
+  </figure>
+</section>
+
+<!-- ============================================================ -->
+<section id="setup">
+  <header>
+    <span class="eyebrow">Software</span>
+    <h2>Firmware &amp; setup</h2>
+  </header>
+  <p class="prose">Everything is done from one web page in Chrome or Edge on a desktop computer: <a href="https://edgecollective.io/micro-config/">edgecollective.io/micro-config</a>. It walks through these steps in detail.</p>
+  <ol class="steps">
+    <li><b>Flash the gateway.</b> Plug in the Heltec and flash the <code>v3-ultrasonic</code> receiver firmware straight from the browser.</li>
+    <li><b>Flash the Rook</b> (skip if it came pre-flashed). Double-tap reset, and a <code>NICENANO</code> drive appears. Drag the <code>.uf2</code> file onto it.</li>
+    <li><b>Pair them.</b> With both powered up side by side, cycle each OLED to its <i>Advert</i> page with short presses, then long-press to broadcast. Each device adds the other as a contact.</li>
+    <li><b>Point the sender at the gateway.</b> In the Rook's serial console, run:
+<pre>list
+target Receiver</pre></li>
+    <li><b>Put the gateway on WiFi</b> from its serial console:
+<pre>set wifi_ssid your-network
+set wifi_password your-password
+reboot</pre></li>
+    <li><b>Point it at your Bayou feed.</b> Create a feed that includes a <code>distance_meters</code> field, then:
+<pre>set bayou_public_key ...
+set bayou_private_key ...</pre></li>
+    <li><b>Optional:</b> change how often readings are sent with <code>set interval 300</code> (seconds, minimum 10), and give the node a name with <code>set name Dock-North</code>.</li>
+  </ol>
+  <p class="prose">To check it's working, run <code>send</code> on the Rook to force a reading now, and <code>status</code> on the gateway to see the WiFi and Bayou status and the last reading received.</p>
+</section>
+
+<footer>
+  <span>Rook hardware: <a href="https://github.com/p-v-o-s/rook">p-v-o-s/rook</a> · Firmware: <a href="https://github.com/edgecollective/MeshCore-simple-sensor">MeshCore-simple-sensor</a> · Setup page: <a href="https://github.com/edgecollective/micro-config">micro-config</a> · Data: <a href="https://gitlab.com/p-v-o-s/agroeco/bayou">Bayou</a></span>
+  <span>Built on <a href="https://github.com/meshcore-dev/MeshCore">MeshCore</a>. Part prices are approximate and change often.</span>
+</footer>
+
+</main>
+</body>
+</html>

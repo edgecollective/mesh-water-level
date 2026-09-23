@@ -92,6 +92,7 @@
   }
   .diagram svg { display: block; width: 100%; height: auto; }
   .diagram.wide svg { min-width: 640px; }
+  .credit { font-size: 0.78rem; color: var(--muted); text-align: right; margin-top: 8px; }
   figcaption { font-size: 0.88rem; color: var(--muted); margin-top: 10px; max-width: 72ch; }
   .diagram .sys-mobile { display: none; }
   @media (max-width: 620px) {
@@ -216,7 +217,6 @@
     <h2>How it fits together</h2>
   </header>
   <p class="prose">Two devices, one link each. The <b>sender</b> sits in a weatherproof box over the water, reads the ultrasonic sensor on a timer, and transmits a short LoRa message with the distance and its battery voltage. The <b>receiver</b> sits indoors within WiFi range (a LoRa link can span a few hundred metres to a few kilometres depending on terrain and antennas), acknowledges each reading, and posts it to a Bayou feed as <code>distance_meters</code> and <code>battery_volts</code>.</p>
-
   <figure>
     <div class="diagram">
       <!-- Adapted from micro-config/img/sensor-system.svg -->
@@ -263,11 +263,15 @@
         <text x="150" y="558" class="s-lbl" text-anchor="middle" style="font-size:16px">Bayou</text>
         <text x="150" y="578" class="s-sub" text-anchor="middle" style="font-size:13px">data store</text>
       </svg>
+      <p class="credit">Illustration courtesy Jacob Lloyd</p>
     </div>
   </figure>
 
   <figure>
-    <img src="img/ultrasonic_sender.png" alt="Illustration: a solar panel and a grey junction box mounted on a wooden board at the water's edge; the ultrasonic sensor points down out of the bottom of the box." width="722" height="282" style="display:block; border-radius:6px; border:1px solid var(--line)">
+    <div class="diagram">
+      <img src="img/ultrasonic_sender.png" alt="Illustration: a solar panel and a grey junction box mounted on a wooden board at the water's edge; the ultrasonic sensor points down out of the bottom of the box." width="722" height="282" style="display:block; margin:0 auto;">
+      <p class="credit">Illustration courtesy Jacob Lloyd</p>
+    </div>
     <figcaption>The sender in the field: a small 5&nbsp;V USB solar panel feeds the Rook's USB port, which charges the lithium battery inside the box. The sensor threads through the bottom of the box and points straight down.</figcaption>
   </figure>
 </section>
